@@ -51,17 +51,10 @@ namespace Starbuko
                         pictureBox1.Image = Image.FromFile(imagePath);
                         pictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
                     }
-                    else
-                    {
-                        // For debugging - show that image wasn't found
-                        pictureBox1.BackColor = Color.DarkRed;
-                    }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    // If image loading fails, show red background
-                    pictureBox1.BackColor = Color.DarkRed;
-                    MessageBox.Show($"Error loading image: {ex.Message}\nPath: {Product.ImagePath}", "Image Load Error");
+                    // Silently handle image loading errors
                 }
             }
         }
