@@ -208,6 +208,7 @@
     <EmbeddedResource Include="SizeSelectionForm.resx">
       <DependentUpon>SizeSelectionForm.cs</DependentUpon>
     </EmbeddedResource>
+    <None Include="App.config.local" />
     <None Include="packages.config" />
     <None Include="Properties\DataSources\LineItem.datasource" />
     <None Include="Properties\DataSources\Transaction.datasource" />
