@@ -36,7 +36,8 @@ namespace Starbuko
             // 
             // pictureBox1
             // 
-            this.pictureBox1.Location = new System.Drawing.Point(10, 10);
+            this.pictureBox1.Location = new System.Drawing.Point(15, 15);
+            this.pictureBox1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(130, 130);
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
@@ -48,9 +49,10 @@ namespace Starbuko
             // 
             this.lblProductName.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblProductName.ForeColor = System.Drawing.Color.White;
-            this.lblProductName.Location = new System.Drawing.Point(10, 145);
+            this.lblProductName.Location = new System.Drawing.Point(172, 15);
+            this.lblProductName.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblProductName.Name = "lblProductName";
-            this.lblProductName.Size = new System.Drawing.Size(130, 40);
+            this.lblProductName.Size = new System.Drawing.Size(186, 62);
             this.lblProductName.TabIndex = 1;
             this.lblProductName.Text = "Product Name";
             this.lblProductName.TextAlign = System.Drawing.ContentAlignment.TopCenter;
@@ -60,9 +62,10 @@ namespace Starbuko
             // 
             this.lblPrice.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblPrice.ForeColor = System.Drawing.Color.White;
-            this.lblPrice.Location = new System.Drawing.Point(10, 185);
+            this.lblPrice.Location = new System.Drawing.Point(163, 114);
+            this.lblPrice.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblPrice.Name = "lblPrice";
-            this.lblPrice.Size = new System.Drawing.Size(130, 20);
+            this.lblPrice.Size = new System.Drawing.Size(195, 31);
             this.lblPrice.TabIndex = 2;
             this.lblPrice.Text = "₱0.00";
             this.lblPrice.TextAlign = System.Drawing.ContentAlignment.TopCenter;
@@ -70,15 +73,16 @@ namespace Starbuko
             // 
             // ProductControl
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(3)))), ((int)(((byte)(53)))), ((int)(((byte)(44)))));
             this.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.Controls.Add(this.lblPrice);
             this.Controls.Add(this.lblProductName);
             this.Controls.Add(this.pictureBox1);
+            this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.Name = "ProductControl";
-            this.Size = new System.Drawing.Size(150, 215);
+            this.Size = new System.Drawing.Size(365, 161);
             this.Click += new System.EventHandler(this.ProductControl_Click);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);

@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Starbuko
@@ -14,28 +11,57 @@ namespace Starbuko
     {
         private List<Product> products;
         private BindingList<LineItem> lineItems;
+        private ProductRepository productRepository;
+        private TransactionRepository transactionRepository;
 
-        public Form1()
+        private User currentUser;
+        private int currentUserId;
+
+        public Form1(User loggedInUser)
         {
             InitializeComponent();
-            InitializeProducts();
+
+            currentUser = loggedInUser;
+            currentUserId = loggedInUser.Id;
+
+            productRepository = new ProductRepository();
+            transactionRepository = new TransactionRepository();
+
             InitializeDataGrid();
-            LoadProductControls();
+            LoadProductsFromDatabase();
+            ApplyUserRoleUI();
         }
 
-        private void InitializeProducts()
+        private void ApplyUserRoleUI()
         {
-            products = new List<Product>
+            lblWelcome.Text = $"Welcome, {currentUser.FullName} ({currentUser.Role})";
+
+            if (currentUser.Role.ToLower() == "cashier")
             {
-                new Product("Creamy Pure Matcha Latte", 180.00m, "StarbukoImages\\matcha_latte.jpeg"),
-                new Product("XOXO Frappuccino", 150.00m, "StarbukoImages\\xoxo_frappucino.jpeg"),
-                new Product("Strawberry Açaí with Lemonade", 160.00m, "StarbukoImages\\strawberry_acai_lemonade.jpeg"),
-                new Product("Pink Drink with Strawberry Açaí", 165.00m, "StarbukoImages\\pink_drink.jpeg"),
-                new Product("Dragon Drink with Mango Dragonfruit", 170.00m, "StarbukoImages\\dragon_drink.jpeg"),
-                new Product("Strawberries Cream Frappuccino", 175.00m, "StarbukoImages\\strawberries_cream_frappuccino.jpg"),
-                new Product("Chocolate Chip Cream Frappuccino", 180.00m, "StarbukoImages\\chocolate_chip_frappuccino.jpg"),
-                new Product("Dark Caramel Coffee Frappuccino", 170.00m, "StarbukoImages\\dark_caramel_frappucino.jpg")
-            };
+                btnNewProduct.Visible = false;
+            }
+            else if (currentUser.Role.ToLower() == "admin")
+            {
+                btnNewProduct.Visible = true;
+            }
+        }
+
+        private void LoadProductsFromDatabase()
+        {
+            try
+            {
+                products = productRepository.GetAllActiveProducts();
+                LoadProductControls();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Failed to load products from database.\n\n" + ex.Message,
+                    "Database Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
         }
 
         private void InitializeDataGrid()
@@ -64,8 +90,8 @@ namespace Starbuko
 
         private void ProductControl_ProductClicked(object sender, EventArgs e)
         {
-            ProductControl productControl = sender as ProductControl;
-            if (productControl != null && productControl.Product != null)
+            var productControl = sender as ProductControl;
+            if (productControl?.Product != null)
             {
                 ShowCupSizeDialog(productControl.Product);
             }
@@ -73,53 +99,39 @@ namespace Starbuko
 
         private void ShowCupSizeDialog(Product product)
         {
-            string size = ShowSizeSelectionPopup();
-
-            // If user cancelled, don't add the item
-            if (size == null)
-                return;
-
-            string productName = product.Name;
-            decimal price = product.Price;
-
-            if (size == "Grande")
+            using (var sizeForm = new SizeSelectionForm())
             {
-                productName = $"{product.Name} (Grande)";
-                price += 20.00m;
-            }
-            else if (size == "Venti")
-            {
-                productName = $"{product.Name} (Venti)";
-                price += 30.00m;
-            }
-            // else Regular - keep original name and price
+                var result = sizeForm.ShowDialog(this);
 
-            AddOrUpdateLineItem(productName, price);
+                if (result != DialogResult.OK)
+                    return;
+
+                string size = sizeForm.SelectedSize;
+
+                string productName = product.Name;
+                decimal price = product.Price;
+
+                if (size == "Grande")
+                {
+                    productName = $"{product.Name} (Grande)";
+                    price += 20.00m;
+                }
+                else if (size == "Venti")
+                {
+                    productName = $"{product.Name} (Venti)";
+                    price += 30.00m;
+                }
+
+                AddOrUpdateLineItem(product.Id, productName, size, price);
+            }
         }
 
-        public string ShowSizeSelectionPopup()
+        private void AddOrUpdateLineItem(int productId, string productName, string cupSize, decimal price)
         {
-            var result = MessageBox.Show(
-                "Choose Cup Size:\n" +
-                "Yes for Grande (+20), " +
-                "No for Venti (+30), " +
-                "Cancel for Regular",
-                "Select Cup Size",
-                MessageBoxButtons.YesNoCancel);
-
-            if (result == DialogResult.Yes)
-                return "Grande";
-            if (result == DialogResult.No)
-                return "Venti";
-            if (result == DialogResult.Cancel)
-                return "Regular";
-
-            return null;
-        }
-
-        private void AddOrUpdateLineItem(string productName, decimal price)
-        {
-            var existingItem = lineItems.FirstOrDefault(li => li.ProductName == productName && li.UnitPrice == price);
+            var existingItem = lineItems.FirstOrDefault(li =>
+                li.ProductId == productId &&
+                li.CupSize == cupSize &&
+                li.UnitPrice == price);
 
             if (existingItem != null)
             {
@@ -128,7 +140,7 @@ namespace Starbuko
             }
             else
             {
-                lineItems.Add(new LineItem(productName, 1, price));
+                lineItems.Add(new LineItem(productId, productName, cupSize, 1, price));
             }
 
             CalculateTotal();
@@ -140,12 +152,122 @@ namespace Starbuko
             lblTotalAmount.Text = $"₱{total:F2}";
         }
 
+        private void SaveCurrentTransaction()
+        {
+            if (lineItems.Count == 0)
+            {
+                MessageBox.Show("There are no items in the cart.",
+                    "No Items",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!decimal.TryParse(txtAmountTendered.Text, out decimal tendered))
+            {
+                MessageBox.Show("Please enter a valid amount tendered.",
+                    "Invalid Input",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            decimal total = lineItems.Sum(li => li.TotalPrice);
+
+            if (tendered < total)
+            {
+                MessageBox.Show("Amount tendered is not enough.",
+                    "Insufficient Amount",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            decimal change = tendered - total;
+
+            try
+            {
+                List<LineItem> receiptItems = lineItems.ToList();
+
+                int transactionId = transactionRepository.SaveTransaction(
+                    currentUserId,
+                    total,
+                    tendered,
+                    change,
+                    receiptItems
+                );
+
+                string transactionDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                string cashierName = currentUser.FullName;
+
+                MessageBox.Show("Transaction saved successfully.",
+                    "Success",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                using (ReceiptReportForm receiptForm = new ReceiptReportForm(
+                    transactionId,
+                    transactionDate,
+                    cashierName,
+                    receiptItems))
+                {
+                    receiptForm.ShowDialog();
+                }
+
+                lineItems.Clear();
+                txtAmountTendered.Clear();
+                lblTotalAmount.Text = "₱0.00";
+                lblChange.Text = "₱0.00";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to save transaction.\n\n" + ex.Message,
+                    "Database Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+        private void btnCheckout_Click(object sender, EventArgs e)
+        {
+            SaveCurrentTransaction();
+        }
+
         private void btnNewTransaction_Click(object sender, EventArgs e)
         {
             lineItems.Clear();
             txtAmountTendered.Clear();
             lblTotalAmount.Text = "₱0.00";
             lblChange.Text = "₱0.00";
+        }
+
+        private void btnLogout_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+
+            using (LoginForm loginForm = new LoginForm())
+            {
+                if (loginForm.ShowDialog() == DialogResult.OK)
+                {
+                    Form1 newForm = new Form1(loginForm.LoggedInUser);
+                    newForm.ShowDialog();
+                }
+                else
+                {
+                    Application.Exit();
+                }
+            }
+
+            this.Close();
+        }
+
+        private void btnNewProduct_Click(object sender, EventArgs e)
+        {
+            using (ManageProductsForm form = new ManageProductsForm())
+            {
+                form.ShowDialog();
+                LoadProductsFromDatabase();
+            }
         }
 
         private void txtAmountTendered_TextChanged(object sender, EventArgs e)
@@ -162,6 +284,17 @@ namespace Starbuko
             {
                 lblChange.Text = "₱0.00";
             }
+        }
+
+        private void flowLayoutPanel1_Paint(object sender, PaintEventArgs e) { }
+        private void panelTop_Paint(object sender, PaintEventArgs e) { }
+        private void lblChange_Click(object sender, EventArgs e) { }
+        private void lblTitle_Click(object sender, EventArgs e) { }
+
+        private void btnAllTransactionsReport_Click(object sender, EventArgs e)
+        {
+            AllTransactionsReportForm reportForm = new AllTransactionsReportForm();
+            reportForm.ShowDialog();
         }
     }
 }
